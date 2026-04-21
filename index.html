@@ -39,6 +39,7 @@
     overflow: hidden;
   }
 
+  /* Full-screen flex column */
   #app {
     display: flex;
     flex-direction: column;
@@ -48,6 +49,7 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  /* TOP NAV — fixed height, never scrolls */
   #topbar {
     flex-shrink: 0;
     background: var(--blue);
@@ -151,6 +153,7 @@
   .dot.u { background: #bbb; }
   .legend-hint { margin-left: auto; font-size: 0.62rem; color: #aaa; font-style: italic; }
 
+  /* SCROLLABLE AREA — takes remaining height */
   #scroll-area {
     flex: 1;
     overflow-y: scroll;
@@ -568,15 +571,15 @@ function getStats() {
 function updateScore() {
   const { total, correct, all } = getStats();
   const badge = document.getElementById('score-badge');
-  badge.textContent = `${correct} / ${total}`;
+  badge.textContent = ${correct} / ${total};
   badge.classList.remove('pop');
   void badge.offsetWidth;
   badge.classList.add('pop');
-  document.getElementById('prog-label').textContent = `${total} answered`;
-  document.getElementById('prog-pct').textContent = `${Math.round((total / all) * 100)}%`;
-  document.getElementById('prog-fill').style.width = `${(total / all * 100)}%`;
+  document.getElementById('prog-label').textContent = ${total} answered;
+  document.getElementById('prog-pct').textContent = Math.round((total / all) * 100) + '%';
+  document.getElementById('prog-fill').style.width = (total / all * 100) + '%';
   if (total === all) {
-    document.getElementById('final-score').textContent = `${correct} / ${all} (${Math.round(correct/all*100)}%)`;
+    document.getElementById('final-score').textContent = ${correct} / ${all} (${Math.round(correct/all*100)}%);
     document.getElementById('summary-banner').classList.add('show');
   }
 }
@@ -599,7 +602,7 @@ function renderQuestions(questions) {
     const ans = answers[q.num];
     const card = document.createElement('div');
     card.className = 'qcard' + (ans ? (ans.correct ? ' answered-correct' : ' answered-wrong') : '');
-    card.id = `card-${q.num}`;
+    card.id = card-${q.num};
 
     const opts = q.options.map((opt, i) => {
       const lbl = String.fromCharCode(65 + i);
@@ -616,11 +619,11 @@ function renderQuestions(questions) {
       </div>`;
     }).join('');
 
-    const fbCls = ans ? `qcard-feedback show ${ans.correct ? 'correct' : 'wrong'}` : 'qcard-feedback';
+    const fbCls = ans ? qcard-feedback show ${ans.correct ? 'correct' : 'wrong'} : 'qcard-feedback';
     const fbHtml = ans
       ? (ans.correct
-          ? `✓ Correct! <span class="meaning-tag">${q.meaning}</span>`
-          : `✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>`)
+          ? ✓ Correct! <span class="meaning-tag">${q.meaning}</span>
+          : ✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>)
       : '';
 
     card.innerHTML = `
@@ -645,7 +648,7 @@ function selectAnswer(qNum, selected, optEl) {
   const isCorrect = selected === q.correct;
   answers[qNum] = { selected, correct: isCorrect };
 
-  const card = document.getElementById(`card-${qNum}`);
+  const card = document.getElementById(card-${qNum});
   card.classList.add(isCorrect ? 'answered-correct' : 'answered-wrong');
   card.querySelector('.q-status').textContent = isCorrect ? '✓' : '✗';
   card.querySelector('.qcard-header').style.background = isCorrect ? 'var(--green)' : 'var(--red)';
@@ -657,11 +660,11 @@ function selectAnswer(qNum, selected, optEl) {
     else if (text === selected && !isCorrect) opt.classList.add('selected-wrong');
   });
 
-  const fb = document.getElementById(`fb-${qNum}`);
-  fb.className = `qcard-feedback show ${isCorrect ? 'correct' : 'wrong'}`;
+  const fb = document.getElementById(fb-${qNum});
+  fb.className = qcard-feedback show ${isCorrect ? 'correct' : 'wrong'};
   fb.innerHTML = isCorrect
-    ? `✓ Correct! <span class="meaning-tag">${q.meaning}</span>`
-    : `✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>`;
+    ? ✓ Correct! <span class="meaning-tag">${q.meaning}</span>
+    : ✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>;
 
   updateScore();
 }
