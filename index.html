@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>漢字クイズ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --paper2: #ede8dc;
+    --red: #c0392b;
+    --green: #1a7a4a;
+    --blue: #1a3a6e;
+    --gold: #c8922a;
+    --correct-bg: #e8f5ee;
+    --correct-border: #1a7a4a;
+    --wrong-bg: #fde8e8;
+    --wrong-border: #c0392b;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Sans JP', sans-serif;
+    -webkit-text-size-adjust: 100%;
+    overflow: hidden;
+  }
+
+  /* Full-screen flex column */
+  #app {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    height: -webkit-fill-available;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* TOP NAV — fixed height, never scrolls */
+  #topbar {
+    flex-shrink: 0;
+    background: var(--blue);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+  .header-title {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .header-sub {
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.65);
+    margin-top: 2px;
+  }
+  .score-badge {
+    background: var(--gold);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    white-space: nowrap;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .tabs {
+    display: flex;
+    background: var(--paper2);
+    border-bottom: 2px solid #c8bfa8;
+  }
+  .tab-btn {
+    flex: 1;
+    height: 44px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: #777;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    -webkit-appearance: none;
+  }
+  .tab-btn.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+    background: var(--paper);
+    font-weight: 700;
+  }
+
+  .progress-wrap {
+    background: var(--paper);
+    padding: 7px 14px 6px;
+    border-bottom: 1px solid #e0d8cc;
+  }
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #999;
+    margin-bottom: 4px;
+  }
+  .progress-bar {
+    height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--gold));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  .legend {
+    display: flex;
+    gap: 12px;
+    padding: 6px 14px;
+    background: var(--paper2);
+    border-bottom: 1px solid #ddd;
+    font-size: 0.68rem;
+    align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; color: #666; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.c { background: var(--green); }
+  .dot.w { background: var(--red); }
+  .dot.u { background: #bbb; }
+  .legend-hint { margin-left: auto; font-size: 0.62rem; color: #aaa; font-style: italic; }
+
+  /* SCROLLABLE AREA — takes remaining height */
+  #scroll-area {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #quiz-section {
+    padding: 12px 12px;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+
+  .part-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--blue);
+    padding: 6px 12px;
+    background: #dde5f5;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .qcard {
+    background: #fff;
+    border: 1.5px solid #c8bfa8;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .qcard.answered-correct { border-color: var(--correct-border); background: var(--correct-bg); }
+  .qcard.answered-wrong   { border-color: var(--wrong-border);   background: var(--wrong-bg); }
+
+  .qcard-header {
+    display: flex;
+    align-items: center;
+    padding: 7px 12px;
+    background: var(--blue);
+    gap: 8px;
+  }
+  .qcard.answered-correct .qcard-header { background: var(--green); }
+  .qcard.answered-wrong   .qcard-header { background: var(--red); }
+
+  .q-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.18);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .q-status { margin-left: auto; color: #fff; font-size: 0.9rem; }
+
+  .qcard-body { padding: 10px 14px 6px; }
+
+  .q-word {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--ink);
+    padding: 6px 0 10px;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+  }
+  .q-word.reading {
+    font-size: 1.1rem;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 500;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    padding-bottom: 10px;
+  }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    background: #fafafa;
+    cursor: pointer;
+    font-size: 0.82rem;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    transition: transform 0.08s, background 0.1s;
+  }
+  .opt:active:not(.disabled) {
+    transform: scale(0.95);
+    background: #eef1fa;
+    border-color: var(--blue);
+  }
+  .opt.disabled { pointer-events: none; }
+  .opt.selected-correct { background: #d4edda; border-color: var(--green); color: var(--green); font-weight: 600; }
+  .opt.selected-wrong   { background: #fde8e8; border-color: var(--red);   color: var(--red);   font-weight: 600; }
+  .opt.reveal-correct   { background: #d4edda; border-color: var(--green); color: var(--green); font-weight: 600; }
+
+  .opt-label {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #e8e3d8;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .opt.selected-correct .opt-label { background: var(--green); color: #fff; }
+  .opt.selected-wrong   .opt-label { background: var(--red);   color: #fff; }
+  .opt.reveal-correct   .opt-label { background: var(--green); color: #fff; }
+
+  .opt-text {
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.3;
+    word-break: break-all;
+    font-size: 0.82rem;
+  }
+
+  .qcard-feedback {
+    font-size: 0.74rem;
+    padding: 4px 14px 10px;
+    display: none;
+    line-height: 1.4;
+  }
+  .qcard-feedback.show { display: block; }
+  .qcard-feedback.correct { color: var(--green); }
+  .qcard-feedback.wrong   { color: var(--red); }
+  .meaning-tag {
+    display: inline-block;
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 0.68rem;
+    color: #555;
+    margin-left: 5px;
+  }
+
+  #summary-banner {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--blue);
+    color: #fff;
+    padding: 14px 20px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    z-index: 999;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  }
+  #summary-banner.show { display: flex; }
+  .summary-text { font-size: 0.82rem; opacity: 0.85; }
+  .summary-score { font-family: 'DM Mono', monospace; font-size: 1.2rem; color: var(--gold); font-weight: 600; }
+  .btn-reset {
+    height: 44px;
+    padding: 0 22px;
+    background: #fff;
+    color: var(--blue);
+    border: none;
+    border-radius: 22px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+  }
+  .btn-reset:active { opacity: 0.8; }
+
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .score-badge.pop { animation: pop 0.28s ease; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="header-inner">
+      <div>
+        <div class="header-title">漢字クイズ</div>
+        <div class="header-sub">Part A: Kanji → Hiragana &nbsp;·&nbsp; Part B: Hiragana → Kanji</div>
+      </div>
+      <div class="score-badge" id="score-badge">0 / 0</div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-a" onclick="showTab('A')">Part A — Kanji → Kana</button>
+      <button class="tab-btn"        id="tab-b" onclick="showTab('B')">Part B — Kana → Kanji</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span id="prog-label">0 answered</span>
+        <span id="prog-pct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="prog-fill"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="dot c"></div> Correct</div>
+      <div class="legend-item"><div class="dot w"></div> Wrong</div>
+      <div class="legend-item"><div class="dot u"></div> Unanswered</div>
+      <span class="legend-hint">Tap to answer</span>
+    </div>
+  </div>
+
+  <div id="scroll-area">
+    <div id="quiz-section"></div>
+  </div>
+</div>
+
+<div id="summary-banner">
+  <div>
+    <div class="summary-text">Quiz Complete! 🎉</div>
+    <div class="summary-score" id="final-score"></div>
+  </div>
+  <button class="btn-reset" onclick="resetQuiz()">Reset</button>
+</div>
+
+<script>
+const ALL_KANJI = [
+  ["月","がつ","Month"],["近所","きんじょ","Neighborhood"],["住所","じゅうしょ","Address"],
+  ["注文","ちゅうもん","Order"],["質問","しつもん","Question"],["店","みせ","Shop"],
+  ["出発する","しゅっぱつする","Depart"],["世界","せかい","World"],
+  ["不便な","ふべんな","Inconvenient"],["複雑","ふくざつ","Complicated"],
+  ["週末","しゅうまつ","Weekend"],["頭","あたま","Head"],["痛い","いたい","Painful"],
+  ["天気","てんき","Weather"],["使う","つかう","Use"],["午後","ごご","Afternoon"],
+  ["妹","いもうと","Younger sister"],["広い","ひろい","Wide"],
+  ["卒業する","そつぎょうする","Graduate"],["家","いえ","House"],
+  ["働きます","はたらきます","Work"],["古い","ふるい","Old"],
+  ["結婚する","けっこんする","Get married"],["作る","つくる","Make"],
+  ["楽しい","たのしい","Fun"],["続ける","つづける","Continue"],
+  ["土曜日","どようび","Saturday"],["飲み物","のみもの","Drink"],
+  ["自転車","じてんしゃ","Bicycle"],["先週","せんしゅう","Last week"],
+  ["合格する","ごうかくする","Pass exam"],["自然","しぜん","Nature"],
+  ["習います","ならいます","Learn"],["体","からだ","Body"],["漫画","まんが","Manga"],
+  ["静かな","しずかな","Quiet"],["自分","じぶん","Myself"],["週","しゅう","Week"],
+  ["何","なに","What"],["歳","さい","Age"],["危険","きけん","Danger"],
+  ["白い","しろい","White"],["英語","えいご","English"],["店員","てんいん","Shop clerk"],
+  ["長い","ながい","Long"],["経験","けいけん","Experience"],["最近","さいきん","Recently"],
+  ["4階","よんかい","4th floor"],["三回","さんかい","3 times"],["魚","さかな","Fish"],
+  ["多い","おおい","Many"],["毎日","まいにち","Every day"],["大きい","おおきい","Big"],
+  ["出口","でぐち","Exit"],["駅","えき","Station"],["勉強します","べんきょうします","Study"],
+  ["試験","しけん","Exam"],["五月蝿い","うるさい","Noisy"],["映画","えいが","Movie"],
+  ["高い","たかい","High/Expensive"],["聞きます","ききます","Listen"],
+  ["運転","うんてん","Driving"],["運転手","うんてんしゅ","Driver"],
+  ["買い物","かいもの","Shopping"],["行きました","いきました","Went"],["風","かぜ","Wind"],
+  ["山","やま","Mountain"],["旅館","りょかん","Japanese inn"],["早く","はやく","Quickly"],
+  ["以上","いじょう","Above"],["前","まえ","Before/Front"],["入口","いりぐち","Entrance"],
+  ["窓口","まどぐち","Counter"],["難しい","むずかしい","Difficult"],
+  ["上手な","じょうずな","Skillful"],["文化","ぶんか","Culture"],["牛乳","ぎゅうにゅう","Milk"],
+  ["忙しい","いそがしい","Busy"],["黒い","くろい","Black"],["昼","ひる","Noon"],
+  ["人","ひと","Person"],["来週","らいしゅう","Next week"],["電話","でんわ","Telephone"],
+  ["漢字","かんじ","Kanji"],["覚えます","おぼえます","Remember"],
+  ["外国","がいこく","Foreign country"],["少し","すこし","A little"],
+  ["苦手","にがて","Not good at"],["同じ","おなじ","Same"],["明るい","あかるい","Bright"],
+  ["花","はな","Flower"],["選びます","えらびます","Choose"],["仕事","しごと","Job"],
+  ["小さい","ちいさい","Small"],["見ます","みます","See"],["2時","にじ","2 o'clock"],
+  ["月曜日","げつようび","Monday"],["一日二回","いちにちにかい","Twice a day"],
+];
+
+const RHYMING_WRONG_HIRA = {
+  "がつ":["かつ","がく","がす"],"きんじょ":["きんしょ","きんじつ","ぎんじょ"],
+  "じゅうしょ":["じゅんしょ","じゅうしゅ","じゅうしょく"],"ちゅうもん":["ちゅうもく","じゅうもん","ちゅうどん"],
+  "しつもん":["しつもく","しつれん","しちもん"],"みせ":["みず","みち","みそ"],
+  "しゅっぱつする":["しゅっぱんする","しゅっせきする","しゅつぱつする"],"せかい":["せけい","せがい","せかん"],
+  "ふべんな":["ふへんな","ふびょうな","ぶべんな"],"ふくざつ":["ふくざん","ふくせん","ふくごう"],
+  "しゅうまつ":["しゅうまい","じゅうまつ","しゅうまく"],"あたま":["あたら","あなま","あたみ"],
+  "いたい":["いがい","いかい","いたく"],"てんき":["でんき","てんけい","てんぎ"],
+  "つかう":["つかい","つかく","つがう"],"ごご":["ごこう","こご","ごぜん"],
+  "いもうと":["いもうこ","いもと","いもね"],"ひろい":["ひくい","ひろう","びろい"],
+  "そつぎょうする":["そつりょうする","そつぎょくする","そつぎょんする"],"いえ":["いき","いけ","いや"],
+  "はたらきます":["はたなきます","はたらかます","はたらきす"],"ふるい":["ふりい","ぶるい","ふるう"],
+  "けっこんする":["けっこうする","けっかんする","けっこくする"],"つくる":["つくろ","つくれ","づくる"],
+  "たのしい":["たのしく","たのしみ","たのしな"],"つづける":["つつける","つずける","つづかる"],
+  "どようび":["とようび","どようじ","どようか"],"のみもの":["のみもん","のりもの","のみもち"],
+  "じてんしゃ":["じてんき","じでんしゃ","じてんちゃ"],"せんしゅう":["せんじつ","せんげつ","せんねん"],
+  "ごうかくする":["こうかくする","ごうかんする","ごうきゃくする"],"しぜん":["しれん","じぜん","しぜき"],
+  "ならいます":["ならかます","ならいす","なられます"],"からだ":["からた","からま","かたら"],
+  "まんが":["まなが","まんか","まんぎょ"],"しずかな":["しずかに","しすかな","じずかな"],
+  "じぶん":["じぶき","じぶな","じぷん"],"しゅう":["じゅう","しゅうき","しゅうと"],
+  "なに":["なん","なの","なね"],"さい":["さく","さか","さこ"],"きけん":["きげん","ぎけん","きけい"],
+  "しろい":["しれい","しらい","じろい"],"えいご":["えいこ","えいく","えいが"],
+  "てんいん":["てんにん","てんいい","でんいん"],"ながい":["なかい","ながく","なかに"],
+  "けいけん":["けいかん","けいけい","けいけつ"],"さいきん":["さいきつ","さいけん","さいごう"],
+  "よんかい":["よんかん","よんかく","よんがい"],"さんかい":["さんかく","さんがい","さんかん"],
+  "さかな":["さかに","さがな","さかま"],"おおい":["おおく","おおに","おおな"],
+  "まいにち":["まいしゅう","まいつき","まいとし"],"おおきい":["おおきく","おおきな","おおきさ"],
+  "でぐち":["でくち","でぐい","でぐに"],"えき":["えく","えか","えに"],
+  "べんきょうします":["べんきょうしまし","べんきょうさます","べんきょうしす"],"しけん":["しかん","しきん","じけん"],
+  "うるさい":["うるかい","うるすい","うるなさい"],"えいが":["えいか","えいこ","えいく"],
+  "たかい":["たかく","たかに","だかい"],"ききます":["きかます","ききもす","きぎます"],
+  "うんてん":["うんどう","うんこう","うんめい"],"うんてんしゅ":["うんてんに","うんてんて","うんてんく"],
+  "かいもの":["かいもき","かいもん","かいもち"],"いきました":["いかました","いくました","いきます"],
+  "かぜ":["かぜく","かぜに","かぜき"],"やま":["やく","やみ","やも"],
+  "りょかん":["りょこう","りょしゅく","りょてん"],"はやく":["はやに","はやき","はやな"],
+  "いじょう":["いじょく","いじょに","いじょき"],"まえ":["まえに","まえき","まえく"],
+  "いりぐち":["いりくち","いりぐに","いりぐく"],"まどぐち":["まどくち","まどぐに","まどぐく"],
+  "むずかしい":["むずかしく","むずかしき","むずかしな"],"じょうずな":["じょうずく","じょうずに","じょうずき"],
+  "ぶんか":["ふんか","ぶんき","ぶんに"],"ぎゅうにゅう":["ぎゅうにょ","ぎゅうにに","ぎゅうにく"],
+  "いそがしい":["いそかしい","いそがしく","いそがしな"],"くろい":["くろく","くろに","ぐろい"],
+  "ひる":["ひく","ひき","ひね"],"ひと":["ひき","ひとに","ひとく"],"らいしゅう":["らいげつ","らいねん","らいにち"],
+  "でんわ":["でんに","でんき","でんく"],"かんじ":["かんに","かんき","かんく"],
+  "おぼえます":["おぼかます","おぼえさます","おぼわます"],"がいこく":["がいこう","がいご","がいき"],
+  "すこし":["すごし","すこく","すこに"],"にがて":["にがき","にがに","にがく"],
+  "おなじ":["おなく","おなき","おなに"],"あかるい":["あかるく","あかるに","あかるな"],
+  "はな":["はなに","はなき","はなく"],"えらびます":["えらかます","えらびす","えらわます"],
+  "しごと":["しごく","しごき","しごに"],"ちいさい":["ちいさく","ちいさな","ちいさき"],
+  "みます":["みかます","みさます","みわます"],"にじ":["にく","にに","にき"],
+  "げつようび":["げつようじ","げつようか","げつにちび"],"いちにちにかい":["いちにちさんかい","いちにちよんかい","いちにちいっかい"],
+};
+
+const KANJI_WRONGS = {
+  "月":["日","目","曰"],"近所":["近代","近道","近年"],"住所":["住宅","住人","順所"],
+  "注文":["注目","重文","注水"],"質問":["質感","試問","七問"],"店":["庄","広","府"],
+  "出発する":["出版する","出席する","出会する"],"世界":["世間","世代","市界"],
+  "不便な":["不平な","不変な","無便な"],"複雑":["複線","複合","複数"],
+  "週末":["週刊","週間","重末"],"頭":["顔","首","足"],"痛い":["辛い","苦い","重い"],
+  "天気":["電気","天界","天才"],"使う":["仕う","遣う","就う"],"午後":["午前","後後","午中"],
+  "妹":["姉","姫","妻"],"広い":["細い","低い","強い"],"卒業する":["卒了する","卒出する","単業する"],
+  "家":["店","駅","宅"],"働きます":["動きます","続きます","歩きます"],"古い":["荒い","新い","旧い"],
+  "結婚する":["結果する","決婚する","結合する"],"作る":["造る","創る","削る"],
+  "楽しい":["嬉しい","悲しい","苦しい"],"続ける":["続かる","続き","後ける"],
+  "土曜日":["日曜日","月曜日","火曜日"],"飲み物":["食べ物","乗り物","着物"],
+  "自転車":["自電車","自転機","自輪車"],"先週":["先月","先日","先年"],
+  "合格する":["合計する","合格ず","合判する"],"自然":["自念","自前","自体"],
+  "習います":["学います","慣います","倣います"],"体":["頭","足","顔"],
+  "漫画":["漫化","万画","慢画"],"静かな":["清かな","澄かな","静かに"],
+  "自分":["自文","自粉","自身"],"週":["年","月","日"],"何":["誰","どこ","何か"],
+  "歳":["才","歴","年"],"危険":["気険","疑険","危感"],"白い":["青い","黒い","赤い"],
+  "英語":["英吾","英話","映語"],"店員":["店主","店長","庄員"],"長い":["幅い","高い","短い"],
+  "経験":["経過","経感","経緯"],"最近":["最後","最初","最高"],"4階":["4回","4会","4界"],
+  "三回":["三階","三会","三界"],"魚":["肉","鳥","貝"],"多い":["少い","強い","広い"],
+  "毎日":["毎週","毎月","毎年"],"大きい":["太い","多い","高い"],"出口":["入口","出所","出場"],
+  "駅":["訳","役","駐"],"勉強します":["弁強します","勉強さます","面強します"],
+  "試験":["実験","試間","試合"],"五月蝿い":["静かい","五月雨い","三月蝿い"],
+  "映画":["絵画","映像","映写"],"高い":["安い","深い","太い"],
+  "聞きます":["書きます","効きます","引きます"],"運転":["運動","運命","運行"],
+  "運転手":["運転士","運転者","運転工"],"買い物":["貝物","買物","飼い物"],
+  "行きました":["行きます","行った","行かました"],"風":["雨","雪","雲"],
+  "山":["川","海","丘"],"旅館":["旅行","旅宿","旅社"],"早く":["遅く","速く","若く"],
+  "以上":["以下","以外","以内"],"前":["後","横","外"],"入口":["出口","窓口","門口"],
+  "窓口":["出口","入口","受口"],"難しい":["苦しい","複しい","辛しい"],
+  "上手な":["下手な","得意な","巧みな"],"文化":["文字","文科","文学"],
+  "牛乳":["牛肉","牛馬","牛車"],"忙しい":["騒しい","苦しい","慌しい"],
+  "黒い":["暗い","赤い","青い"],"昼":["朝","夜","夕"],"人":["方","者","民"],
+  "来週":["来月","来日","来年"],"電話":["伝話","電気","電車"],"漢字":["感字","漢時","漢語"],
+  "覚えます":["記えます","憶えます","感えます"],"外国":["外語","外交","外来"],
+  "少し":["小し","多し","若し"],"苦手":["得意","上手","弱手"],"同じ":["似る","違う","等じ"],
+  "明るい":["清るい","暗い","光るい"],"花":["草","木","葉"],"選びます":["撰びます","選ります","選かます"],
+  "仕事":["仕方","仕合","仕組"],"小さい":["細さい","少さい","短さい"],
+  "見ます":["視ます","観ます","見す"],"2時":["2回","2分","2秒"],
+  "月曜日":["日曜日","火曜日","水曜日"],"一日二回":["一日三回","一日一回","一日四回"],
+};
+
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+function shuffle(arr, rng) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuestions() {
+  const rng = seededRand(99);
+  const shuffled = shuffle(ALL_KANJI, rng);
+  const partA = shuffled.slice(0, 98);
+  const partB = shuffle(shuffled.slice(0, 98), rng);
+  const qA = partA.map(([kanji, reading, meaning], i) => {
+    const wrongs = (RHYMING_WRONG_HIRA[reading] || [reading+"く", reading+"な", reading+"に"]).slice(0,3);
+    return { num: i+1, part:'A', word: kanji, correct: reading, meaning, options: shuffle([reading, ...wrongs], rng) };
+  });
+  const qB = partB.map(([kanji, reading, meaning], i) => {
+    const wrongs = (KANJI_WRONGS[kanji] || ["？？","？？","？？"]).slice(0,3);
+    return { num: 99+i, part:'B', word: reading, correct: kanji, meaning, options: shuffle([kanji, ...wrongs], rng) };
+  });
+  return { qA, qB };
+}
+
+const { qA, qB } = buildQuestions();
+const allQ = [...qA, ...qB];
+const answers = {};
+let currentTab = 'A';
+
+function getStats() {
+  let total = 0, correct = 0;
+  for (const k in answers) { total++; if (answers[k].correct) correct++; }
+  return { total, correct, all: allQ.length };
+}
+
+function updateScore() {
+  const { total, correct, all } = getStats();
+  const badge = document.getElementById('score-badge');
+  badge.textContent = ${correct} / ${total};
+  badge.classList.remove('pop');
+  void badge.offsetWidth;
+  badge.classList.add('pop');
+  document.getElementById('prog-label').textContent = ${total} answered;
+  document.getElementById('prog-pct').textContent = Math.round((total / all) * 100) + '%';
+  document.getElementById('prog-fill').style.width = (total / all * 100) + '%';
+  if (total === all) {
+    document.getElementById('final-score').textContent = ${correct} / ${all} (${Math.round(correct/all*100)}%);
+    document.getElementById('summary-banner').classList.add('show');
+  }
+}
+
+function renderQuestions(questions) {
+  const section = document.getElementById('quiz-section');
+  section.innerHTML = '';
+
+  const label = document.createElement('div');
+  label.className = 'part-label';
+  label.textContent = questions[0].part === 'A'
+    ? 'Part A — 漢字 → 正しいひらがなを選んでください'
+    : 'Part B — ひらがな → 正しい漢字を選んでください';
+  section.appendChild(label);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  questions.forEach(q => {
+    const ans = answers[q.num];
+    const card = document.createElement('div');
+    card.className = 'qcard' + (ans ? (ans.correct ? ' answered-correct' : ' answered-wrong') : '');
+    card.id = card-${q.num};
+
+    const opts = q.options.map((opt, i) => {
+      const lbl = String.fromCharCode(65 + i);
+      let cls = 'opt';
+      if (ans) {
+        cls += ' disabled';
+        if (opt === q.correct) cls += ' reveal-correct';
+        else if (opt === ans.selected) cls += ' selected-wrong';
+      }
+      const safeOpt = opt.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="${cls}" onclick="selectAnswer(${q.num},'${safeOpt}',this)">
+        <div class="opt-label">${lbl}</div>
+        <div class="opt-text">${opt}</div>
+      </div>`;
+    }).join('');
+
+    const fbCls = ans ? qcard-feedback show ${ans.correct ? 'correct' : 'wrong'} : 'qcard-feedback';
+    const fbHtml = ans
+      ? (ans.correct
+          ? ✓ Correct! <span class="meaning-tag">${q.meaning}</span>
+          : ✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>)
+      : '';
+
+    card.innerHTML = `
+      <div class="qcard-header">
+        <span class="q-num">Q${q.num}</span>
+        <span class="q-status">${ans ? (ans.correct ? '✓' : '✗') : ''}</span>
+      </div>
+      <div class="qcard-body">
+        <div class="q-word${q.part==='B' ? ' reading' : ''}">${q.word}</div>
+        <div class="options">${opts}</div>
+      </div>
+      <div class="${fbCls}" id="fb-${q.num}">${fbHtml}</div>`;
+    grid.appendChild(card);
+  });
+
+  section.appendChild(grid);
+}
+
+function selectAnswer(qNum, selected, optEl) {
+  if (answers[qNum]) return;
+  const q = allQ.find(x => x.num === qNum);
+  const isCorrect = selected === q.correct;
+  answers[qNum] = { selected, correct: isCorrect };
+
+  const card = document.getElementById(card-${qNum});
+  card.classList.add(isCorrect ? 'answered-correct' : 'answered-wrong');
+  card.querySelector('.q-status').textContent = isCorrect ? '✓' : '✗';
+  card.querySelector('.qcard-header').style.background = isCorrect ? 'var(--green)' : 'var(--red)';
+
+  card.querySelectorAll('.opt').forEach(opt => {
+    opt.classList.add('disabled');
+    const text = opt.querySelector('.opt-text').textContent;
+    if (text === q.correct) opt.classList.add('reveal-correct');
+    else if (text === selected && !isCorrect) opt.classList.add('selected-wrong');
+  });
+
+  const fb = document.getElementById(fb-${qNum});
+  fb.className = qcard-feedback show ${isCorrect ? 'correct' : 'wrong'};
+  fb.innerHTML = isCorrect
+    ? ✓ Correct! <span class="meaning-tag">${q.meaning}</span>
+    : ✗ Wrong. Answer: <strong>${q.correct}</strong> <span class="meaning-tag">${q.meaning}</span>;
+
+  updateScore();
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-a').classList.toggle('active', tab === 'A');
+  document.getElementById('tab-b').classList.toggle('active', tab === 'B');
+  renderQuestions(tab === 'A' ? qA : qB);
+  document.getElementById('scroll-area').scrollTop = 0;
+}
+
+function resetQuiz() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  document.getElementById('summary-banner').classList.remove('show');
+  updateScore();
+  showTab(currentTab);
+}
+
+showTab('A');
+updateScore();
+</script>
+</body>
+</html>
